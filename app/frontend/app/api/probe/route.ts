@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { execFile } from "child_process";
 import path from "path";
-import { BACKEND_URL, backendUp, startBackend } from "@/lib/backend";
+import { BACKEND_URL, backendUp, startBackend, getPythonCmd } from "@/lib/backend";
 
 export const runtime = "nodejs";
 
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 
   return new Promise<NextResponse>((resolve) => {
     execFile(
-      "python",
+      getPythonCmd(),
       [script, source],
       { cwd: backendDir, timeout: 120_000, maxBuffer: 4 * 1024 * 1024, env: { ...process.env, PYTHONIOENCODING: "utf-8" } },
       (err, stdout) => {

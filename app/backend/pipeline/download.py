@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, List, Dict, Any
@@ -90,7 +91,11 @@ def _ytdlp(for_download: bool = True) -> List[str]:
     """yt-dlp base command. YouTube throttles downloads unless yt-dlp can run its JavaScript
     challenge, so point it at Node.js (already installed for the web app) when downloading.
     Just reading video info is ~0.5 s faster without it."""
-    cmd = ["yt-dlp", "--no-warnings"]
+    ytdlp_bin = shutil.which("yt-dlp") or str(Path(sys.executable).parent / "yt-dlp")
+    if Path(ytdlp_bin).exists():
+        cmd = [ytdlp_bin, "--no-warnings"]
+    else:
+        cmd = [sys.executable, "-m", "yt_dlp", "--no-warnings"]
     if for_download and shutil.which("node"):
         cmd += ["--js-runtimes", "node"]
     return cmd

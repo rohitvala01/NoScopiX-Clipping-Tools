@@ -19,4 +19,8 @@ echo "  Viral Clipper By MrBitBlox"
 echo "  Open http://localhost:3000  (first load can take ~20 s)"
 echo "  Press Ctrl+C to stop."
 echo "==================================================="
+mkdir -p backend/data
+python backend/server.py > backend/data/server.log 2>&1 &
+BACKEND_PID=$!
+trap "kill $BACKEND_PID 2>/dev/null" EXIT INT TERM
 cd frontend && npm run dev

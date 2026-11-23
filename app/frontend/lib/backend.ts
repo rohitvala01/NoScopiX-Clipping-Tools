@@ -7,6 +7,14 @@ import path from "path";
 export const BACKEND_URL = "http://127.0.0.1:8765";
 export const backendDir = path.resolve(process.cwd(), "..", "backend");
 
+export function getPythonCmd(): string {
+  const venvUnix = path.resolve(backendDir, "..", ".venv", "bin", "python");
+  const venvWin = path.resolve(backendDir, "..", ".venv", "Scripts", "python.exe");
+  if (fs.existsSync(venvUnix)) return venvUnix;
+  if (fs.existsSync(venvWin)) return venvWin;
+  return "python";
+}
+
 declare global {
   var _backendStartedAt: number | undefined;
 }
@@ -28,7 +36,7 @@ export function startBackend(): void {
   const logDir = path.join(backendDir, "data");
   fs.mkdirSync(logDir, { recursive: true });
   const logFd = fs.openSync(path.join(logDir, "server.log"), "a");
-  const child = spawn("python", [path.join(backendDir, "server.py")], {
+  const child = spawn(getPythonCmd(), [path.join(backendDir, "server.py")], {
     cwd: backendDir,
     detached: true,
     stdio: ["ignore", logFd, logFd],

@@ -6,7 +6,6 @@ import {
   Link2, Upload, Sparkles, Type, Loader2, Search, Clock, Radio, Scissors, Minus, Plus, Film, Flame,
 } from "lucide-react";
 import { submitJob, probeSource, uploadVideo, ProbeResult } from "@/lib/api";
-import { CreatorPromo } from "@/components/CreatorPromo";
 
 // ── time helpers ────────────────────────────────────────────────────────────────
 function fmtTime(sec: number): string {
@@ -114,7 +113,8 @@ export default function HomePage() {
   const suggestedMax = Math.max(2, Math.floor(selectedLen / (minDuration + 8)));
 
   const analyze = async (src?: string) => {
-    const value = (src ?? sourceInput).trim().replace(/^"|"$/g, "");
+    const raw = typeof src === "string" ? src : sourceInput;
+    const value = (raw ?? "").trim().replace(/^"|"$/g, "");
     if (!value) return setError("Paste a video link or a local file path first.");
     setError(null);
     setProbing(true);
@@ -122,7 +122,7 @@ export default function HomePage() {
     try {
       const info = await probeSource(value);
       setProbe(info);
-      setSourceInput(info.source);
+      setSourceInput(info.source || value);
       setRangeStart(0);
       setRangeEnd(info.duration ?? 0);
     } catch (e: any) {
@@ -225,7 +225,10 @@ export default function HomePage() {
               }}
               onPaste={(e) => {
                 const text = e.clipboardData.getData("text");
-                if (text) setTimeout(() => analyze(text), 0);
+                if (text) {
+                  setSourceInput(text);
+                  setTimeout(() => analyze(text), 0);
+                }
               }}
               onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), analyze())}
               className="flex-1 min-w-0 bg-zinc-950/80 border border-zinc-800 rounded-xl px-4 py-3 text-sm placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500"
@@ -599,8 +602,6 @@ export default function HomePage() {
           )}
         </button>
       </form>
-
-      <CreatorPromo />
     </div>
   );
 }

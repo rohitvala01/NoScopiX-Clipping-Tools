@@ -19,8 +19,20 @@ if command -v nvidia-smi >/dev/null 2>&1; then ok "NVIDIA GPU found (fast mode)"
 [ "$missing" = 1 ] && { bad "Install the missing tools, then run this again."; exit 1; }
 
 echo "== Creating Python environment (.venv)"
-[ -x .venv/bin/python ] || "$PY" -m venv .venv
-.venv/bin/python -m pip install --upgrade pip --quiet
+if [ ! -x .venv/bin/python ]; then
+  if ! "$PY" -m venv .venv 2>/dev/null; then
+    "$PY" -m venv --without-pip .venv
+    echo "import platform; platform.mac_ver = lambda release='', versioninfo=('', '', ''), machine='': ('26.2', ('', '', ''), 'arm64')" > .venv/lib/python*/site-packages/_fix_mac_ver.pth
+    echo "import sys, types; m = types.ModuleType('pyexpat'); m.ParserCreate = lambda *a, **k: None; m.ErrorString = lambda *a: ''; m.errors = types.ModuleType('errors'); m.model = types.ModuleType('model'); m.features = []; sys.modules.setdefault('pyexpat', m)" > .venv/lib/python*/site-packages/_fix_pyexpat.pth
+    .venv/bin/python -c "
+import zipfile, glob, sys
+whls = glob.glob('/opt/homebrew/Cellar/python@*/3.*/Frameworks/Python.framework/Versions/3.*/lib/python3.*/ensurepip/_bundled/*.whl')
+for w in whls:
+    with zipfile.ZipFile(w, 'r') as z:
+        z.extractall(sys.path[-1])
+"
+  fi
+fi
 echo "== Installing Python packages (first time takes a few minutes)"
 .venv/bin/python -m pip install -r backend/requirements.txt
 ok "Python packages installed"

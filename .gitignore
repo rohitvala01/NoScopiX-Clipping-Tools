@@ -1,0 +1,45 @@
+# Virtual environments
+.venv/
+**/.venv/
+venv/
+env/
+*.venv
+node_modules/
+.next/
+out/
+build/
+dist/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python caches and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Job data, uploads, temporary downloads and outputs
+app/backend/data/
+app/backend/output/
+backend/data/
+backend/output/
+*.log
+
+# macOS / OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+
+# IDE & Editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
+

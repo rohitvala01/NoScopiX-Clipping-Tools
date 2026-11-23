@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
-import { sendJobToBackend, startBackend } from "@/lib/backend";
+import { sendJobToBackend, startBackend, getPythonCmd } from "@/lib/backend";
 
 declare global {
   var _jobStore: Map<string, any> | undefined;
@@ -107,8 +107,8 @@ export async function POST(req: NextRequest) {
       }
       const logFd = fs.openSync(path.join(jobLogDir, "process.log"), "a");
 
-      console.log(`[Job ${jobId}] Spawning local Python process: python ${args.join(" ")}`);
-      const child = spawn("python", args, {
+      console.log(`[Job ${jobId}] Spawning local Python process: ${getPythonCmd()} ${args.join(" ")}`);
+      const child = spawn(getPythonCmd(), args, {
         cwd: backendDir,
         detached: true,
         stdio: ["ignore", logFd, logFd],

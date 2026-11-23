@@ -17,7 +17,6 @@ import {
   Loader2
 } from "lucide-react";
 import { getJobStatus, ClipResult } from "@/lib/api";
-import { CreatorPromo } from "@/components/CreatorPromo";
 import { formatDuration, getScoreColor } from "@/lib/utils";
 
 export default function JobStatusPage() {
@@ -243,10 +242,6 @@ export default function JobStatusPage() {
           </div>
         </div>
       )}
-
-      <div className="pt-6">
-        <CreatorPromo />
-      </div>
     </div>
   );
 }

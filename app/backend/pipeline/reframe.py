@@ -100,7 +100,12 @@ def _encode_args() -> List[str]:
 
 
 # Face detection: YuNet (neural, accurate on small webcam insets) with Haar cascade fallback
-_face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+_face_cascade = None
+if hasattr(cv2, "CascadeClassifier") and hasattr(cv2, "data") and hasattr(cv2.data, "haarcascades"):
+    try:
+        _face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    except Exception:
+        _face_cascade = None
 _YUNET_PATH = Path(__file__).resolve().parent.parent / "models" / "face_detection_yunet_2023mar.onnx"
 
 
@@ -116,10 +121,12 @@ def _find_faces(frame: np.ndarray) -> List[Tuple[float, float, float, float, flo
             return [(float(f[0]), float(f[1]), float(f[2]), float(f[3]), float(f[14])) for f in faces]
         except Exception as e:
             logger.debug(f"YuNet failed ({e}); using Haar cascade")
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    found = _face_cascade.detectMultiScale(gray, scaleFactor=1.15, minNeighbors=5,
-                                           minSize=(max(36, fh_ // 28),) * 2)
-    return [(float(x), float(y), float(w), float(h), 0.6) for (x, y, w, h) in found]
+    if _face_cascade:
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        found = _face_cascade.detectMultiScale(gray, scaleFactor=1.15, minNeighbors=5,
+                                               minSize=(max(36, fh_ // 28),) * 2)
+        return [(float(x), float(y), float(w), float(h), 0.6) for (x, y, w, h) in found]
+    return []
 
 
 def _grab_frames(path: Path, start: float, end: float, count: int, src_w: int, src_h: int, scale: float):
