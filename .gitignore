@@ -23,6 +23,12 @@ __pycache__/
 .coverage
 htmlcov/
 
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.env
+
 # Job data, uploads, temporary downloads and outputs
 app/backend/data/
 app/backend/output/

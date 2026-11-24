@@ -135,7 +135,8 @@ async def export_all_clips(
                 "end": clip.end,
                 "duration": clip.duration,
                 "viral_factors": clip.viral_factors,
-                "reason": clip.reason
+                "reason": clip.reason,
+                "scene_type": getattr(clip, "scene_type", "general"),
             }
 
     tasks = [_process_single_clip(i, clip) for i, clip in enumerate(ranked_clips, start=1)]

@@ -55,12 +55,12 @@ WINDOW_SIZE_SEC = 5.0
 CANDIDATE_COUNT = 30
 
 SIGNAL_WEIGHTS = {
-    "audio_energy": 0.20,
+    "scene_thematic": 0.30,  # fighting, comedy, romance / high-entertainment narrative
+    "audio_energy": 0.15,
     "laughter_applause": 0.20,
-    "most_replayed": 0.25,
-    "chat_spikes": 0.15,
-    "speech_patterns": 0.10,
-    "scene_changes": 0.10,
+    "most_replayed": 0.20,
+    "chat_spikes": 0.10,
+    "speech_patterns": 0.05,
 }
 SIGNAL_LLM_RATIO = (0.4, 0.6)  # 40% signal score, 60% LLM score
 

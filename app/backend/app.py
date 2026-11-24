@@ -113,6 +113,7 @@ async def run_pipeline(
     caption_font: Optional[str] = None,
     title_overlay: bool = True,
     hindi_quality: str = "fast",
+    theme: str = "all",
 ) -> Dict[str, Any]:
     """Execute end-to-end viral clipping pipeline."""
     job_dir = config.DATA_DIR / job_id
@@ -182,6 +183,7 @@ async def run_pipeline(
             min_duration=clip_min_duration,
             max_duration=clip_max_duration,
             target_count=max(config.CANDIDATE_COUNT, clip_count * 3),
+            theme=theme,
         )
         t_an = time.perf_counter()
 
@@ -196,6 +198,7 @@ async def run_pipeline(
             video_duration=metadata.duration,
             # intro/outro zones only make sense for the whole video, not a chosen section or live recording
             skip_edges=(metadata.offset == 0 and range_end is None and not live_minutes),
+            theme=theme,
         )
         t_sc = time.perf_counter()
 
@@ -294,6 +297,8 @@ if __name__ == "__main__":
                         choices=sorted(list(CAPTION_STYLES) + list(STYLE_ALIASES)), help="Caption style")
     parser.add_argument("--no-title", action="store_true", help="Don't burn the clip title into the video")
     parser.add_argument("--job-id", type=str, default=None, help="Explicit job ID")
+    parser.add_argument("--theme", choices=["all", "fighting", "comedy", "romance"], default="all",
+                        help="Thematic focus: all, fighting (action), comedy (funny), or romance (drama)")
     parser.add_argument("--language", type=str, default=config.TRANSCRIBE_LANGUAGE,
                         help="Spoken language: 'auto' or ISO code (hi, en, mr, bn, ta, te, ...). Captions keep that language's script.")
 
@@ -324,6 +329,7 @@ if __name__ == "__main__":
         caption_font=args.font,
         title_overlay=not args.no_title,
         hindi_quality=args.hindi_quality,
+        theme=args.theme,
     ))
 
     if res["status"] == "completed":

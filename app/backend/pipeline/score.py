@@ -24,6 +24,7 @@ class RankedClip:
     llm_score: int
     viral_factors: List[str]
     reason: str
+    scene_type: str = "general"
 
 def _extract_context(
     start: float,
@@ -127,9 +128,10 @@ async def score_and_rank(
     max_duration: float = config.DEFAULT_CLIP_MAX_DURATION,
     video_duration: float = 0.0,
     skip_edges: bool = True,
+    theme: str = "all",
 ) -> List[RankedClip]:
     """Evaluate candidates with Gemini LLM, snap boundaries, and produce ranked clips."""
-    logger.info(f"Preparing {len(candidates)} candidates for LLM scoring...")
+    logger.info(f"Preparing {len(candidates)} candidates for LLM scoring (theme: '{theme}')...")
     
     prepared_candidates = []
     for cand in candidates:
@@ -149,6 +151,7 @@ async def score_and_rank(
         min_duration=min_duration,
         max_duration=max_duration,
         language=transcript.language,
+        theme=theme,
     )
 
     ranked_clips: List[RankedClip] = []
@@ -171,8 +174,22 @@ async def score_and_rank(
         cand_match = next((c for c in candidates if abs(c.start - j.start) < 4.0), None)
         sig_score = cand_match.combined_score if cand_match else 0.5
 
+        # Calculate thematic boost
+        st = getattr(j, "scene_type", "general")
+        theme_boost = 0
+        if theme == "fighting":
+            theme_boost = 15 if st == "fighting_action" else -15
+        elif theme == "comedy":
+            theme_boost = 15 if st == "comedy_humor" else -15
+        elif theme == "romance":
+            theme_boost = 15 if st == "romantic_drama" else -15
+        elif theme == "all":
+            # Any recognized thematic scene gets a boost over generic
+            if st in ("fighting_action", "comedy_humor", "romantic_drama"):
+                theme_boost = 8
+
         final_score = int(round(
-            (sig_score * 100.0 * sig_weight) + (j.score * llm_weight)
+            (sig_score * 100.0 * sig_weight) + (j.score * llm_weight) + theme_boost
         ))
         # Shorts with almost no talking rarely work (and get no captions): penalize them
         n_words = sum(1 for w in all_words if w.end >= snapped_start and w.start <= snapped_end)
@@ -187,6 +204,10 @@ async def score_and_rank(
         if filler_reason:
             logger.info(f"Skipping {snapped_start:.0f}-{snapped_end:.0f}s ({filler_reason}): {j.title}")
 
+        vf = list(j.viral_factors)
+        if st != "general" and st not in vf:
+            vf.insert(0, st)
+
         target.append(RankedClip(
             start=snapped_start,
             end=snapped_end,
@@ -196,8 +217,9 @@ async def score_and_rank(
             score=min(100, max(1, final_score)),
             signal_score=round(sig_score, 2),
             llm_score=j.score,
-            viral_factors=j.viral_factors,
-            reason=j.reason
+            viral_factors=vf,
+            reason=j.reason,
+            scene_type=st,
         ))
 
     # Pick the best-scoring clips first, skipping any that overlap an already chosen one.

@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Link2, Upload, Sparkles, Type, Loader2, Search, Clock, Radio, Scissors, Minus, Plus, Film, Flame,
+  Swords, Smile, Heart,
 } from "lucide-react";
 import { submitJob, probeSource, uploadVideo, ProbeResult } from "@/lib/api";
 
@@ -76,6 +77,37 @@ const FONTS = [
   { id: "Verdana", label: "Verdana", css: "Verdana, sans-serif" },
 ];
 
+const THEMES = [
+  {
+    id: "all" as const,
+    label: "⚡ All Highlights",
+    sub: "Action, Comedy & Romance",
+    desc: "Extracts high-entertainment moments across fighting, humor, and romance.",
+    icon: Sparkles,
+  },
+  {
+    id: "fighting" as const,
+    label: "🥊 Fighting & Action",
+    sub: "Combat & Clutches",
+    desc: "Shootouts, clutches, battles, car chases, rage & intense action scenes.",
+    icon: Swords,
+  },
+  {
+    id: "comedy" as const,
+    label: "😂 Comedy & Funny",
+    sub: "Laughs & Fails",
+    desc: "Hilarious jokes, laugh attacks, trolling, funny fails & witty roasts.",
+    icon: Smile,
+  },
+  {
+    id: "romance" as const,
+    label: "❤️ Romantic & Drama",
+    sub: "Flirting & Banter",
+    desc: "Flirting, cute interactions, relationship banter, heartbreak & drama.",
+    icon: Heart,
+  },
+];
+
 export default function HomePage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -102,6 +134,7 @@ export default function HomePage() {
   const [font, setFont] = useState("");
   const [language, setLanguage] = useState("auto");
   const [hindiQuality, setHindiQuality] = useState<"fast" | "best">("fast");
+  const [theme, setTheme] = useState<"all" | "fighting" | "comedy" | "romance">("all");
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -184,6 +217,7 @@ export default function HomePage() {
         font,
         title_overlay: titleOverlay,
         hindi_quality: hindiQuality,
+        theme,
       });
       router.push(`/jobs/${res.jobId}`);
     } catch (err: any) {
@@ -464,9 +498,46 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ── 4. Look ── */}
+        {/* ── 4. Scene Focus / AI Narrative ── */}
+        <section className="space-y-3 pt-5 border-t border-zinc-800/80">
+          <StepLabel n={4} icon={<Flame className="w-4 h-4 text-orange-400" />} text="Scene focus" />
+          <p className="text-xs text-zinc-400">
+            Select the type of scenes to extract. AI filters out mundane driving/walking and targets peak moments.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {THEMES.map((t) => {
+              const Icon = t.icon;
+              const active = theme === t.id;
+              return (
+                <button
+                  type="button"
+                  key={t.id}
+                  onClick={() => setTheme(t.id)}
+                  className={`p-3.5 rounded-xl border text-left transition-all ${
+                    active
+                      ? "border-indigo-500 bg-indigo-500/15 ring-1 ring-indigo-500/50 shadow-md shadow-indigo-500/10"
+                      : "border-zinc-800/80 bg-zinc-950/40 hover:border-zinc-700"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <Icon className={`w-4 h-4 ${active ? "text-indigo-400" : "text-zinc-400"}`} />
+                      <span className="text-xs font-bold text-zinc-100">{t.label}</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 font-medium">
+                      {t.sub}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-zinc-400 leading-snug">{t.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ── 5. Look ── */}
         <section className="space-y-4 pt-5 border-t border-zinc-800/80">
-          <StepLabel n={4} icon={<Type className="w-4 h-4 text-yellow-400" />} text="Captions & title" />
+          <StepLabel n={5} icon={<Type className="w-4 h-4 text-yellow-400" />} text="Captions & title" />
           <div className="flex flex-wrap gap-5">
             <Toggle checked={captions} onChange={setCaptions} label="Animated captions" />
             <Toggle checked={titleOverlay} onChange={setTitleOverlay} label="Title on video" />

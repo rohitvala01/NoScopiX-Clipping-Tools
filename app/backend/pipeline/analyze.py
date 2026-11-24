@@ -142,6 +142,108 @@ def _analyze_chat_spikes(chat_replay: Optional[List[Dict[str, Any]]], duration: 
         results.append((t, float(val)))
     return results
 
+# Thematic keywords for extracting high-retention scenes (Action/Fighting, Comedy/Humor, Romantic/Drama)
+FIGHT_ACTION_KEYWORDS = {
+    # English
+    "kill", "killed", "killing", "shoot", "shooting", "shot", "gun", "guns", "fight", "fighting",
+    "war", "attack", "attacking", "headshot", "clutch", "punch", "die", "died", "dead", "destroy",
+    "destroyed", "damage", "police", "chase", "enemy", "enemies", "danger", "blast", "bomb", "hit",
+    "smash", "brawl", "action", "sniper", "weapon", "weapons", "defeat", "execute", "revenge",
+    "blood", "rage", "screaming", "rush", "flank", "target", "combat", "showdown", "knock", "knocked",
+    "bullet", "bullets", "grenade", "bazooka", "assault", "ambush", "battle", "survive", "deadly",
+    # Hindi / Hinglish
+    "maar", "maaro", "maara", "maardiya", "marna", "marenge", "thok", "thoko", "thokna", "goli",
+    "goliyan", "dushman", "khatam", "bhaag", "bhaago", "bachao", "bhedna", "ladai", "lafda", "jhagda",
+    "pitai", "dhoya", "tod", "toda", "phod", "phoda", "udaa", "udao", "udade", "pakad", "gira", "giraya",
+    "loot", "kutta", "chodunga", "maarunga", "daalunga", "bachke", "aag", "kabza", "gang", "gangster",
+    "shikaar", "phodna", "phat", "panga", "hathiyar", "tode", "dhoyenge", "girega", "bachna",
+}
+
+COMEDY_HUMOR_KEYWORDS = {
+    # English
+    "lol", "lmao", "rofl", "haha", "hahaha", "funny", "hilarious", "joke", "jokes", "prank", "pranks",
+    "troll", "trolls", "trolling", "fail", "fails", "stupid", "crazy", "insane", "wtf", "ridiculous",
+    "roast", "roasting", "cracked", "comedy", "meme", "memes", "clown", "embarrassing", "noob", "bot",
+    "laugh", "laughing", "laughs", "funniest", "awkward", "oops", "silly", "unreal",
+    # Hindi / Hinglish
+    "hasi", "has", "haso", "hasna", "hasenge", "mazak", "mazaak", "pagal", "chutiya", "bewakoof",
+    "gadha", "chirkut", "bakwaas", "popat", "hadd", "ulti", "sharam", "joker", "maza", "khulle",
+    "arre", "bhains", "paani", "oyee", "waah", "dhanya", "scene", "phati", "fatt", "halkat",
+    "bawasir", "beizzati", "nautanki", "drama", "ullu", "chomu", "locha", "ghapla", "jhamela",
+    "chutiye", "kya kar raha", "gayi", "bhai ye kya", "has mat", "epic fail", "kamina",
+}
+
+ROMANTIC_DRAMA_KEYWORDS = {
+    # English
+    "love", "romance", "romantic", "flirt", "flirting", "cute", "crush", "dating", "date", "marry",
+    "marriage", "propose", "proposal", "girlfriend", "boyfriend", "gf", "bf", "kiss", "kissing",
+    "hug", "hugging", "sweetheart", "darling", "baby", "babe", "beautiful", "handsome", "gorgeous",
+    "heart", "heartbreak", "crying", "tears", "miss", "emotional", "breakup", "feelings", "soulmate",
+    "sweet", "lover", "attractive", "hot", "relationship", "couple", "together", "forever",
+    # Hindi / Hinglish
+    "pyaar", "pyar", "ishq", "mohabbat", "dil", "jaan", "shona", "babu", "sundar", "khubsoorat",
+    "khoobsurat", "shaadi", "shadi", "biah", "biwi", "patni", "patana", "patayi", "chumma", "pappi",
+    "yaad", "rona", "ro mat", "aansoo", "dhokha", "kash", "apna", "deewani", "deewana", "aashiq",
+    "prem", "preet", "meethi", "mehbooba", "sanam", "jaaneman", "pyari", "dilwale", "mohabbatein",
+}
+
+
+def _analyze_scene_themes(
+    transcript: TranscriptionResult,
+    duration: float,
+    target_theme: str = "all",
+    window_sec: float = 5.0
+) -> List[Tuple[float, float]]:
+    """
+    Score timeline windows based on high-interest themes:
+    - Fighting / Action / Combat
+    - Comedy / Humor / Funny fails
+    - Romantic / Flirting / Emotional Drama
+    Filters out boring random driving, walking, or idle chatter.
+    """
+    import re as _re
+    if not transcript or not transcript.segments:
+        return []
+
+    num_windows = int(math.ceil(duration / window_sec))
+    scores = [0.0] * num_windows
+
+    for seg in transcript.segments:
+        text = seg.text.lower()
+        tokens = set(_re.findall(r"\b\w+\b", text))
+
+        fight_hits = len(tokens.intersection(FIGHT_ACTION_KEYWORDS))
+        comedy_hits = len(tokens.intersection(COMEDY_HUMOR_KEYWORDS))
+        romance_hits = len(tokens.intersection(ROMANTIC_DRAMA_KEYWORDS))
+
+        exclamation_boost = min(1.5, text.count("!") * 0.4)
+        question_boost = min(1.0, text.count("?") * 0.25)
+        upper_boost = 0.5 if any(w.isupper() and len(w) > 3 for w in seg.text.split()) else 0.0
+
+        if target_theme == "fighting":
+            thematic = fight_hits * 2.0 + exclamation_boost + upper_boost
+        elif target_theme == "comedy":
+            thematic = comedy_hits * 2.0 + exclamation_boost
+        elif target_theme == "romance":
+            thematic = romance_hits * 2.0 + question_boost
+        else:  # "all": highlight whichever exciting theme is present
+            max_theme = max(fight_hits, comedy_hits, romance_hits)
+            sum_theme = fight_hits + comedy_hits + romance_hits
+            thematic = (max_theme * 1.5) + (sum_theme * 0.4) + exclamation_boost + question_boost + upper_boost
+
+        if thematic > 0:
+            idx_start = max(0, int((seg.start - 2.0) // window_sec))
+            idx_end = min(num_windows, int(math.ceil((seg.end + 2.0) / window_sec)))
+            for idx in range(idx_start, idx_end):
+                scores[idx] = max(scores[idx], thematic)
+
+    arr = np.array(scores)
+    if np.ptp(arr) == 0:
+        return [(float(i * window_sec + window_sec / 2.0), 0.5) for i in range(num_windows)]
+    norm = (arr - np.min(arr)) / np.ptp(arr)
+    return [(float(i * window_sec + window_sec / 2.0), float(norm[i])) for i in range(num_windows)]
+
+
 def _analyze_speech_patterns(transcript: TranscriptionResult, duration: float) -> List[Tuple[float, float]]:
     """Detect dynamic speech rate shifts (rapid punchlines or dramatic pauses)."""
     if not transcript.segments:
@@ -255,29 +357,33 @@ async def analyze_signals(
     min_duration: float = config.DEFAULT_CLIP_MIN_DURATION,
     max_duration: float = config.DEFAULT_CLIP_MAX_DURATION,
     target_count: int = config.CANDIDATE_COUNT,
+    theme: str = "all",
 ) -> AnalysisResult:
-    """Run all multimodal signals and generate top candidate windows."""
+    """Run multimodal and thematic scene signals to generate top candidate windows."""
     duration = metadata.duration
     audio_path = job_dir / "audio.wav"
     
-    logger.info("Extracting audio energy & reaction signals...")
+    logger.info(f"Extracting audio energy, reaction signals, and '{theme}' thematic scenes...")
     audio_data, audio_sr = _load_audio_data(audio_path)
     audio_energy = _analyze_audio_energy(audio_data, audio_sr, duration)
     laughter = _detect_laughter_applause(audio_data, audio_sr, duration)
     heatmap = _parse_heatmap(metadata.heatmap_data, duration)
     chat_spikes = _analyze_chat_spikes(metadata.chat_replay, duration)
     speech_patterns = _analyze_speech_patterns(transcript, duration)
+    scene_themes = _analyze_scene_themes(transcript, duration, target_theme=theme)
     if scene_changes is None:
         scene_changes = detect_scene_changes(video_path)
 
     # Determine dynamic active weights
     active_weights = dict(config.SIGNAL_WEIGHTS)
     if not heatmap:
-        del active_weights["most_replayed"]
+        active_weights.pop("most_replayed", None)
     if not chat_spikes:
-        del active_weights["chat_spikes"]
+        active_weights.pop("chat_spikes", None)
     if not scene_changes:
-        del active_weights["scene_changes"]
+        active_weights.pop("scene_changes", None)
+    if not scene_themes:
+        active_weights.pop("scene_thematic", None)
 
     # Re-normalize weights to sum to 1.0
     total_w = sum(active_weights.values())
@@ -295,6 +401,8 @@ async def analyze_signals(
             break
 
         scores = {}
+        if "scene_thematic" in active_weights:
+            scores["scene_thematic"] = _interpolate_signal(scene_themes, t_center)
         if "audio_energy" in active_weights:
             scores["audio_energy"] = _interpolate_signal(audio_energy, t_center)
         if "laughter_applause" in active_weights:

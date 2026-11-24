@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { source, type, clip_count, clip_duration, captions, preset, language,
-            range, live_minutes, font, title_overlay, hindi_quality } = body;
+            range, live_minutes, font, title_overlay, hindi_quality, theme } = body;
+    const sceneTheme = ["all", "fighting", "comedy", "romance"].includes(theme) ? theme : "all";
     const hindiQuality = hindi_quality === "best" ? "best" : "fast";
     const num = (v: any) => (v === null || v === undefined || v === "" || isNaN(Number(v)) ? null : Number(v));
     const clipCount = Math.max(2, Math.floor(num(clip_count) ?? 6));
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
       captions: captions !== false,
       caption_preset: preset || "streamer",
       language: lang,
+      theme: sceneTheme,
       status: "processing",
       stage: "Downloading source video & engagement heatmaps...",
       progress: 10,
@@ -86,6 +88,7 @@ export async function POST(req: NextRequest) {
         "--min", String(minDur),
         "--max", String(maxDur),
         "--language", lang,
+        "--theme", sceneTheme,
       ];
       if (rangeStart !== null && rangeEnd !== null && rangeEnd > rangeStart) {
         args.push("--start", String(rangeStart), "--end", String(rangeEnd));

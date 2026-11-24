@@ -11,6 +11,7 @@ export interface SubmitJobRequest {
   font?: string;
   title_overlay?: boolean;
   hindi_quality?: "fast" | "best";
+  theme?: "all" | "fighting" | "comedy" | "romance";
 }
 
 export interface ProbeResult {
